@@ -4,18 +4,20 @@ import java.util.Random;
 /* @author Isaac */
 public class iniciadorServidor extends Thread
 {
-    int sumaPuerto;
+    int sumaPuerto;    
+    private TablaHash<String[]> recursoCompartido;
     
-    public iniciadorServidor(int sumaPuerto)
+    public iniciadorServidor(int sumaPuerto, TablaHash<String[]> recursoCompartido)
     {
         this.sumaPuerto = sumaPuerto;
+        this.recursoCompartido = recursoCompartido;
     }
     
     @Override
     public void run() 
     {        
         Random r = new Random();
-        Server servidor = new Server(sumaPuerto,r.nextInt(10));
+        Server servidor = new Server(sumaPuerto, recursoCompartido);
 
     }   
 }

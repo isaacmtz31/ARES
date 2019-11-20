@@ -2,9 +2,9 @@
 import java.util.*;
  
 public class Reader extends Thread {
-    private TablaHash<Integer> sharedList;
+    private TablaHash<String> sharedList;
  
-    public Reader(TablaHash<Integer> sharedList) {
+    public Reader(TablaHash<String> sharedList) {
         this.sharedList = sharedList;
     }
  
@@ -12,7 +12,7 @@ public class Reader extends Thread {
     {
         Random random = new Random();
         int index = random.nextInt(sharedList.size());
-        Integer number = sharedList.get(index);
+        String[] number = sharedList.get(index);
  
         System.out.println(getName() + " -> get: " + number);
  

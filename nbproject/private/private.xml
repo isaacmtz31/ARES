@@ -5,11 +5,13 @@
         <group>
             <file>file:/C:/Users/Isaac/Documents/NetBeansProjects/ARES/src/iniciadorCliente.java</file>
             <file>file:/C:/Users/Isaac/Documents/NetBeansProjects/ARES/src/Node.java</file>
+            <file>file:/C:/Users/Isaac/Documents/NetBeansProjects/ARES/src/Reader.java</file>
             <file>file:/C:/Users/Isaac/Documents/NetBeansProjects/ARES/src/ARES.java</file>
             <file>file:/C:/Users/Isaac/Documents/NetBeansProjects/ARES/src/Anuncios.java</file>
             <file>file:/C:/Users/Isaac/Documents/NetBeansProjects/ARES/src/MD5.java</file>
             <file>file:/C:/Users/Isaac/Documents/NetBeansProjects/ARES/src/Client.java</file>
             <file>file:/C:/Users/Isaac/Documents/NetBeansProjects/ARES/src/Server.java</file>
+            <file>file:/C:/Users/Isaac/Documents/NetBeansProjects/ARES/src/TablaHash.java</file>
             <file>file:/C:/Users/Isaac/Documents/NetBeansProjects/ARES/src/iniciadorServidor.java</file>
         </group>
     </open-files>

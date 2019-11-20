@@ -8,14 +8,18 @@ public class Node
     private int indxNodo;
     private Server servidor;
     private Client cliente;
+    private TablaHash<String[]> RecursoCompartido;
     
-    public Node(int indxNodo){
+    public Node(int indxNodo, TablaHash<String[]> recursoCompartido)
+    {
+        this.RecursoCompartido = recursoCompartido;
         this.indxNodo = indxNodo;   
-        iniciadorServidor is = new iniciadorServidor(indxNodo);
-        is.start();
-        
-        iniciadorCliente ic = new iniciadorCliente(indxNodo);
+          
+        iniciadorCliente ic = new iniciadorCliente(indxNodo, recursoCompartido);
         ic.start();
+        
+        iniciadorServidor is = new iniciadorServidor(indxNodo, recursoCompartido);
+        is.start();      
         
     }    
 }

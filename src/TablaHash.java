@@ -7,14 +7,15 @@ import java.util.concurrent.locks.*;
  
 public class TablaHash<E> 
 {
-    private List<E> list = new ArrayList<>();
+    private List<String[]> list = new ArrayList<>();
     private ReadWriteLock rwLock = new ReentrantReadWriteLock();
  
-    public TablaHash(E... initialElements) { //genérico:Clase, Interfaz
+    public TablaHash(String[]... initialElements) { //genérico:Clase, Interfaz
         list.addAll(Arrays.asList(initialElements));
     }
  
-    public void add(E element) {
+    public void add(String[] element) 
+    {
         Lock writeLock = rwLock.writeLock();
         writeLock.lock();
         try {
@@ -24,7 +25,7 @@ public class TablaHash<E>
         }
     }
  
-    public E get(int index) {
+    public String[] get(int index) {
         Lock readLock = rwLock.readLock();
         readLock.lock();
  

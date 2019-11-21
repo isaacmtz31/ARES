@@ -16,6 +16,7 @@ public class TablaHash<E>
  
     public void add(String[] element) 
     {
+        
         Lock writeLock = rwLock.writeLock();
         writeLock.lock();
         try {
@@ -26,6 +27,7 @@ public class TablaHash<E>
     }
  
     public String[] get(int index) {
+        
         Lock readLock = rwLock.readLock();
         readLock.lock();
  
@@ -33,7 +35,7 @@ public class TablaHash<E>
             return list.get(index);
         } finally {
             readLock.unlock();
-        }
+        }        
     }
  
     public int size() {

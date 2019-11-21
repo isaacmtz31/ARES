@@ -18,6 +18,5 @@ public class iniciadorServidor extends Thread
     {        
         Random r = new Random();
         Server servidor = new Server(sumaPuerto, recursoCompartido);
-
     }   
 }

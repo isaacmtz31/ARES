@@ -37,14 +37,7 @@ public class Anuncios extends Thread
                 System.err.println("Direccion no valida");
             }
             servidorAnuncios.joinGroup(gpo);    
-            Lock writeLock = rwLock.writeLock();
-            writeLock.lock();
-            try {
-                run();
-            } finally {
-                writeLock.unlock();
-            }
-            
+            run();                        
         }catch(Exception e){
             
         }//catch
@@ -55,13 +48,15 @@ public class Anuncios extends Thread
        String x = "";
        MD5 md5 = new MD5();
        try {           
-           File f = new File("C:\\Users\\Isaac\\Desktop\\ARES\\server-"+(indxServidor) );           
+           //File f = new File("C:\\Users\\Isaac\\Desktop\\ARES\\server-"+(indxServidor) );           
+           File f = new File("C:\\Users\\lenovo\\Desktop\\ARES\\server-"+(indxServidor) );           
            recursosDisponibles = new ArrayList(Arrays.asList(f.list()));
            for(int i = 0; i < recursosDisponibles.size(); i++)
            {          
                String aux = recursosDisponibles.get(i);
                try {
-                  x = md5.getMD5Checksum("C:\\Users\\Isaac\\Desktop\\ARES\\server-"+(indxServidor)+"\\"+aux);
+                  //x = md5.getMD5Checksum("C:\\Users\\Isaac\\Desktop\\ARES\\server-"+(indxServidor)+"\\"+aux);
+                  x = md5.getMD5Checksum("C:\\Users\\lenovo\\Desktop\\ARES\\server-"+(indxServidor)+"\\"+aux);
                } catch (Exception e) {
                    e.printStackTrace();
                }               

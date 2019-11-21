@@ -58,6 +58,7 @@ public class Client extends Thread
             subrecurso = recurso[i].split("&&");                       
             for(int j = 0; j < subrecurso.length; j++) {
                 System.out.println("Subrecurso: " + subrecurso[j]);
+                System.out.println("");
             }
         }
         

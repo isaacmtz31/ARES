@@ -5,7 +5,7 @@ public class Server
     private int MCAST_PORT = 9999;    
     private TablaHash<String[]> recursoCompartido;
         
-    public  Server(int indxServidor, TablaHash<String[]> recursoCompartido)
+    public Server(int indxServidor, TablaHash<String[]> recursoCompartido)
     {
         this.indxServidor = indxServidor;     
         this.recursoCompartido = recursoCompartido;

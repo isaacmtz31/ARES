@@ -3,13 +3,15 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 
-/* @author lenovo */
+/* @author Isaac */
 
-public class Central extends Thread
+public class Central extends Thread implements RecursosCompartidoInterface
 {
     private int PORT_U = 1234;
     private String HOST_ADDRESS = "127.0.0.1";
     private TablaHash<String[]> hash;
+    
+    public Central(){}
     
     public Central(TablaHash<String[]> hash){
         this.hash = hash;        
@@ -24,15 +26,31 @@ public class Central extends Thread
             System.out.println("¡EXCEPTION STARTING RMI REGISTRY!");		            
             e.printStackTrace();	  
         }
-        //C:\Users\lenovo\Documents\ARES\build\classes
+        
+        try {
+            //String cb = "file:///C:\Users\lenovo\Documents\ARES\build\classes/";
+            String cb = "file:/C:\\Users\\Isaac\\Documents\\classes\\NetBeansProjects\\ARES\\build\\classes/";
+            System.setProperty("java.rmi.server.codebase",cb); 
+	    Central central = new Central();
+	    RecursosCompartidoInterface stub = (RecursosCompartidoInterface) UnicastRemoteObject.exportObject(central,0);
+	    // Bind the remote object's stub in the registry
+	    Registry registry = LocateRegistry.getRegistry();
+	    registry.bind("Recursos", stub);
+	    System.err.println("SERVER READY");
+	} catch (Exception e) {
+	    System.err.println("Server exception: " + e.toString());
+	    e.printStackTrace();
+	}        
     }
     
-    private TablaHash<String[]> recuperaHash() throws RemoteException
+    @Override
+    public TablaHash<String[]> recuperaHash() throws RemoteException
     {
         return hash;
     }
     
-    private String[] obtenerNombreArchivo(int[] posicionProbable)throws RemoteException
+    @Override
+    public String[] obtenerNombreArchivo(int[] posicionProbable)throws RemoteException
     {
         String[] auxNombre = new String[posicionProbable.length]; //Es probable que se encuentre es mas de 1
         for(int i = 0; i < posicionProbable.length; i++)
@@ -74,4 +92,24 @@ public class Central extends Thread
         }        
         return auxPuerto;
     }    
+
+    @Override
+    public boolean agregarRecurso(String[] estructura, int[] posiciones) throws RemoteException {
+        
+        boolean flag = false;
+        for(int i = 0; i < posiciones.length; i++)
+        {
+            if(hash.get(i) != null)
+            {
+                //Se puede insertar
+                hash.add(estructura);
+                flag = true;
+            }
+            else
+            {
+                continue;
+            }
+        }
+        return flag;
+    }
 }

@@ -60,10 +60,7 @@ public class Client extends Thread
                 System.out.println("Subrecurso: " + subrecurso[j]);
                 System.out.println("");
             }
-        }
-        
-
-        
+        }       
     }
     @Override
     public void run() {

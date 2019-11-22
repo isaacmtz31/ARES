@@ -1,56 +1,26 @@
-import java.rmi.registry.Registry;
-import java.rmi.registry.LocateRegistry;
-import java.rmi.RemoteException;
-import java.rmi.server.UnicastRemoteObject;
+import java.io.FileOutputStream;
+import java.net.InetSocketAddress;
+import java.net.StandardSocketOptions;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.channels.SelectionKey;
+import java.nio.channels.Selector;
+import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.SocketChannel;
+import java.util.Iterator;
+ 
 
 /* @author Isaac */
 
-public class Central extends Thread implements RecursosCompartidoInterface
-{
-    private int PORT_U = 1234;
-    private String HOST_ADDRESS = "127.0.0.1";
-    private TablaHash<String[]> hash;
+public class Central extends Thread 
+{    
     
-    public Central(){}
+    public final static int CENTRAL_PORT = 8000;
+    public final static int MAX_PACKET_SIZE = 2000;      
+    public final static String CENTRAL_HOST = "127.0.0.2";
+    private final static TablaHash<String[]> hash = new TablaHash<>();    
     
-    public Central(TablaHash<String[]> hash){
-        this.hash = hash;        
-    }
-    
-    private void init(){
-        try
-        {
-            java.rmi.registry.LocateRegistry.createRegistry(1099); //puerto default del rmiregistr
-            System.out.println("RMI REGISTRY READY");            
-        }catch (Exception e){	 
-            System.out.println("¡EXCEPTION STARTING RMI REGISTRY!");		            
-            e.printStackTrace();	  
-        }
-        
-        try {
-            //String cb = "file:///C:\Users\lenovo\Documents\ARES\build\classes/";
-            String cb = "file:/C:\\Users\\Isaac\\Documents\\classes\\NetBeansProjects\\ARES\\build\\classes/";
-            System.setProperty("java.rmi.server.codebase",cb); 
-	    Central central = new Central();
-	    RecursosCompartidoInterface stub = (RecursosCompartidoInterface) UnicastRemoteObject.exportObject(central,0);
-	    // Bind the remote object's stub in the registry
-	    Registry registry = LocateRegistry.getRegistry();
-	    registry.bind("Recursos", stub);
-	    System.err.println("SERVER READY");
-	} catch (Exception e) {
-	    System.err.println("Server exception: " + e.toString());
-	    e.printStackTrace();
-	}        
-    }
-    
-    @Override
-    public TablaHash<String[]> recuperaHash() throws RemoteException
-    {
-        return hash;
-    }
-    
-    @Override
-    public String[] obtenerNombreArchivo(int[] posicionProbable)throws RemoteException
+    public synchronized String[] obtenerNombreArchivo(int[] posicionProbable)
     {
         String[] auxNombre = new String[posicionProbable.length]; //Es probable que se encuentre es mas de 1
         for(int i = 0; i < posicionProbable.length; i++)
@@ -64,7 +34,7 @@ public class Central extends Thread implements RecursosCompartidoInterface
         return auxNombre;
     }
     
-    public String[] obtenerMD5Archivo(int[] posicionProbable)throws RemoteException
+    public synchronized String[] obtenerMD5Archivo(int[] posicionProbable)
     {
         String[] auxMD5 = new String[posicionProbable.length]; //Es probable que se encuentre es mas de 1
         for(int i = 0; i < posicionProbable.length; i++)
@@ -79,7 +49,7 @@ public class Central extends Thread implements RecursosCompartidoInterface
     }
     
     
-    public String[] obtenerPuerto(int[] posicionProbable)throws RemoteException
+    public synchronized String[] obtenerPuerto(int[] posicionProbable)
     {
         String[] auxPuerto = new String[posicionProbable.length]; //Es probable que se encuentre es mas de 1
         for(int i = 0; i < posicionProbable.length; i++)
@@ -93,8 +63,9 @@ public class Central extends Thread implements RecursosCompartidoInterface
         return auxPuerto;
     }    
 
-    @Override
-    public boolean agregarRecurso(String[] estructura, int[] posiciones) throws RemoteException {
+    
+    public synchronized boolean agregarRecurso(String[] estructura, int[] posiciones)
+    {
         
         boolean flag = false;
         for(int i = 0; i < posiciones.length; i++)
@@ -111,5 +82,59 @@ public class Central extends Thread implements RecursosCompartidoInterface
             }
         }
         return flag;
+    }
+    
+     
+    
+    public static void main(String[] args)
+    {
+        //String outputFile = "C:\\Users\\Isaac\\Pictures\\obrero2.png";
+        try {                
+                ServerSocketChannel server = ServerSocketChannel.open();                
+                server.configureBlocking(false); 
+                server.setOption(StandardSocketOptions.SO_REUSEADDR, true);
+                server.socket().bind(new InetSocketAddress(CENTRAL_HOST, CENTRAL_PORT));                
+                Selector selector = Selector.open();
+                server.register(selector, SelectionKey.OP_ACCEPT);                
+                System.out.println("---------- SERVIDOR INICIADO ----------"); 
+                while(true) 
+                {
+                    selector.select();
+                    Iterator<SelectionKey> iterator = selector.selectedKeys().iterator();
+                    while (iterator.hasNext()) 
+                    {
+                        SelectionKey key = (SelectionKey) iterator.next();
+                        iterator.remove();
+                        if ( key.isAcceptable() )
+                        {						
+                            SocketChannel client = server.accept();
+                            System.out.println("\n\n---------- NUEVA CONEXIÓN ACEPTADA ----------"); 
+                            System.out.println( "\t\t> PUERTO: " + client.socket().getPort() + " Y DIRECCIÓN: " + client.socket().getInetAddress().getHostAddress() );                                                
+                            client.configureBlocking(false);
+                            client.register(selector, SelectionKey.OP_READ);						
+                            continue;
+                        }					                                                
+                        if ( key.isReadable() )                             
+                        {
+                            SocketChannel ch =( SocketChannel) key.channel();
+                            ByteBuffer b = ByteBuffer.allocate(MAX_PACKET_SIZE);
+                            b.clear();
+                            int n = ch.read(b);
+                            b.flip();
+                            String recursos = new String( b.array(), 0, n );                              
+                            String respuesta = " CORROBORAR RECURSOS RECIBIDOS ";
+                            if( hash.formatearMsj(recursos) ){
+                                respuesta = "RECURSOS BIEN RECIBIDOS";
+                                
+                            }                                
+                            ByteBuffer b2=ByteBuffer.wrap(respuesta.getBytes());
+                            ch.write(b2);
+                            continue;                            
+                        }
+                    }			
+                }
+        } catch (Exception e) {
+                e.printStackTrace();
+        }	
     }
 }

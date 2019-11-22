@@ -1,19 +1,19 @@
 /* @author Isaac */
 public class Server 
-{   
+{          
     private int indxServidor;
-    private int MCAST_PORT = 9999;    
-    private TablaHash<String[]> recursoCompartido;
-        
-    public Server(int indxServidor, TablaHash<String[]> recursoCompartido)
-    {
-        this.indxServidor = indxServidor;     
-        this.recursoCompartido = recursoCompartido;
+    
+    public Server(int indxServidor){        
+        this.indxServidor = indxServidor;
         iniciarAnuncios();
+    }   
+    
+    private void iniciarAnuncios(){         
+        Anuncios adv = new Anuncios(indxServidor);        
+        adv.start();
     }
     
-    public synchronized void iniciarAnuncios(){ 
-        //Dos hilos, un anunciador de recursos y otro para la busqeda
-        new Anuncios(MCAST_PORT, indxServidor);        
+    private void iniciarIdentificacion(){
+        Identificacion id = new Identificacion(indxServidor);
     }
 }

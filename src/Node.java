@@ -11,6 +11,6 @@ public class Node
     public Node(int indxNode)
     {        
         this.indxNode = indxNode;    
-        Server server = new Server(indxNode);
+        Server server = new Server(indxNode, 8001+indxNode);
     }    
 }

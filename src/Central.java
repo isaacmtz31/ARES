@@ -1,23 +1,27 @@
 import java.io.FileOutputStream;
+import java.io.IOException;
+import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.net.StandardSocketOptions;
 import java.nio.ByteBuffer;
+import java.nio.channels.DatagramChannel;
 import java.nio.channels.FileChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.Iterator;
+import java.util.Set;
  
 
 /* @author Isaac */
 
 public class Central extends Thread 
 {    
-    
     public final static int CENTRAL_PORT = 8000;
-    public final static int MAX_PACKET_SIZE = 2000;      
-    public final static String CENTRAL_HOST = "127.0.0.2";
+    public final static int MAX_PACKET_SIZE = 65000;      
+    public final static String CENTRAL_HOST = "127.0.0.1";
     private final static TablaHash<String[]> hash = new TablaHash<>();    
     
     public synchronized String[] obtenerNombreArchivo(int[] posicionProbable)
@@ -65,8 +69,7 @@ public class Central extends Thread
 
     
     public synchronized boolean agregarRecurso(String[] estructura, int[] posiciones)
-    {
-        
+    {        
         boolean flag = false;
         for(int i = 0; i < posiciones.length; i++)
         {
@@ -84,7 +87,81 @@ public class Central extends Thread
         return flag;
     }
     
+    
+    public static void main(String[] args){
+        SocketAddress host;
+        int client_port = 0;
+        try{
+            /*We open a datagram channel*/
+            DatagramChannel channel = DatagramChannel.open();
+            channel.configureBlocking(false);
+            channel.setOption(StandardSocketOptions.SO_REUSEADDR, true);
+                        
+            /*We bind our server*/
+            DatagramSocket socket = channel.socket();
+            SocketAddress address = new InetSocketAddress(CENTRAL_HOST, CENTRAL_PORT);
+            socket.bind(address);
+            System.out.println("\n---------- THE CENTRAL HAS BEEN INITIALIZED ----------\n"); 
+            
+            /*If we want to send to a specific node, we need this remote  */
+            SocketAddress remote = null;
+            String hhost = "localhost";
+            try{
+                 remote = new InetSocketAddress(client_port);
+            }catch(Exception e){
+              System.err.println("Something happened with remote/inetsocketaddres");
+            }
+            
+            Selector selector = Selector.open();
+            channel.register(selector,SelectionKey.OP_READ);
+            ByteBuffer buffer = ByteBuffer.allocate(MAX_PACKET_SIZE);
+            selector.select();
+            
+            while(true)
+            {
+                selector.select(5000);               
+                Iterator<SelectionKey>it = selector.selectedKeys().iterator();            
+                while( it.hasNext() ){
+                    SelectionKey key = (SelectionKey)it.next();
+                    it.remove();
+                    if( key.isWritable() ) {
+                        /*
+                        buffer.clear();
+                        buffer.putInt(++n);
+                        buffer.flip();
+                        channel.send(buffer, remote);
+                        System.out.println("Escribiendo el dato: "+n);
+                        continue;*/
+                    }else if( key.isReadable() ){
+                       buffer.clear();
+                       SocketAddress client = channel.receive(buffer);
+                       if(buffer.hasArray()){
+                           buffer.flip();
+                           String recursos = new String( buffer.array() );                              
+                           System.out.println("RECURSOS RECIBIDOS \n" + recursos );
+                           String respuesta = " CORROBORAR RECURSOS RECIBIDOS ";
+                           if( hash.formatearMsj(recursos) ){
+                               respuesta = "RECURSOS BIEN RECIBIDOS";
+                           }        
+                       /*
+                       ByteBuffer b2=ByteBuffer.wrap(respuesta.getBytes());
+                       channel.send(b2, remote);*/
+                       }
+                       else{
+                           System.out.println("IT HASN'T ARRAY");
+                       }                       
+                       continue; 
+                    }
+               }                
+            }
+      }catch(Exception e){
+        System.out.println("GENERAL EXCEPTION");
+	System.err.println(e);
+      }//catch
+
+    }
      
+    /*
     
     public static void main(String[] args)
     {
@@ -128,6 +205,7 @@ public class Central extends Thread
                                 
                             }                                
                             ByteBuffer b2=ByteBuffer.wrap(respuesta.getBytes());
+                            
                             ch.write(b2);
                             continue;                            
                         }
@@ -136,5 +214,5 @@ public class Central extends Thread
         } catch (Exception e) {
                 e.printStackTrace();
         }	
-    }
+    }*/
 }

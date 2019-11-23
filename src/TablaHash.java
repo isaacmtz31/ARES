@@ -2,6 +2,7 @@
  *
  * @author Isaac
  */
+
 import java.util.*;
 import java.util.concurrent.locks.*;
  
@@ -40,7 +41,7 @@ public class TablaHash<E>
         }        
     }
     
-    public synchronized boolean existeTablaHash(String[] subrecurso)
+    public boolean existeTablaHash(String[] subrecurso)
     {
         boolean flag = false;       
         int s = size();
@@ -103,12 +104,13 @@ public class TablaHash<E>
         }
     }
     
-    public synchronized boolean formatearMsj(String mensaje)
+    public boolean formatearMsj(String mensaje)
     {        
-        boolean flag = false;        
-        String[] recurso = mensaje.split("¬");    
+        boolean flag = false;                
         String[] subrecurso = null;
         String[] subHash = new String[3];
+        String[] recurso = mensaje.split("¬");    
+        
         for ( int i = 0; i < recurso.length ;i++ ) {            
             subrecurso = recurso[i].split("&&");    
             for( int j = 0; j < subrecurso.length; j++ ) {           
@@ -116,7 +118,7 @@ public class TablaHash<E>
                 System.out.println("--->" +subHash[j]);
             }
             /*Agregamos el recurso a la tablaHASH*/
-            if(existeTablaHash(subHash))                            
+            if( existeTablaHash(subHash) )                            
                 flag = true;            
             else
                 continue;            

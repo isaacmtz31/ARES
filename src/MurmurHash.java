@@ -1,5 +1,3 @@
-
-
 /** Murmur hash 2.0.
  * 
  * The murmur hash is a relative fast hash function from

@@ -1,16 +1,16 @@
-
-import java.util.Random;
-
 /* @author Isaac  */
+
 public class Node 
 {    
-    private int indxNode;
     private Server server;
     private Client client;
     
     public Node(int indxNode)
-    {        
-        this.indxNode = indxNode;    
-        Server server = new Server(indxNode, 8001+indxNode);
+    {                  
+        int port = 8000 + indxNode;
+        server = new Server(indxNode, port);
+        server.start();
+        port = port + indxNode;
+        client = new Client(indxNode, port);        
     }    
 }

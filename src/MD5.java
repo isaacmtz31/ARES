@@ -1,7 +1,6 @@
 /*  @author Isaac  */
 import java.io.*;
 import java.security.MessageDigest;
-import sun.applet.Main;
 
 public class MD5 
 {
@@ -29,16 +28,5 @@ public class MD5
        }
        return result;
    }
-   /*
-    public static void main(String[] main)
-    {
-        try {
-                System.out.println(getMD5Checksum("C:\\Users\\Isaac\\Desktop\\ARES\\server-3\\archivo.pdf"));
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-    }
-           */
 }
 

@@ -1,84 +1,44 @@
-/**
- *
- * @author Isaac
- */
-
 import java.util.*;
 import java.util.concurrent.locks.*;
- 
+
+/* @author Isaac */
+
 public class TablaHash<E> 
 {
-    private List<String[]> list = new ArrayList<>();
+    private ArrayList<String[]> list;
     private ReadWriteLock rwLock = new ReentrantReadWriteLock();
- 
-    public TablaHash(String[]... initialElements) { //genérico:Clase, Interfaz
-        list.addAll(Arrays.asList(initialElements));
-    }
-    
-    public TablaHash(){};
- 
-    public void add(String[] element) 
-    {
+    private final int MAX_LENGTH_LIST = 500;
         
+    public TablaHash(){
+        String[] aux = {"","","",""};
+        list = new ArrayList(MAX_LENGTH_LIST);        
+        for(int i = 0; i < MAX_LENGTH_LIST; i++)        
+            list.add(aux);                
+    }
+ 
+    public void add(String[] element, int position ) 
+    {        
         Lock writeLock = rwLock.writeLock();
         writeLock.lock();
         try {
-            list.add(element);
+            list.set(position, element);
         } finally {
             writeLock.unlock();
         }
     }
  
-    public String[] get(int index) {
+    public String[] get(int position) {
         
         Lock readLock = rwLock.readLock();
         readLock.lock();
- 
         try {
-            return list.get(index);
+            return list.get(position);
         } finally {
             readLock.unlock();
         }        
     }
     
-    public boolean existeTablaHash(String[] subrecurso)
-    {
-        boolean flag = false;       
-        int s = size();
-        if(s == 0)
-        {
-            add(subrecurso);   
-            imprimirTablaHash();
-        }else
-        {            
-            for(int i = 0; i < s; i++)
-            {
-                if((list.get(i)[0]).equals(subrecurso[0]) )
-                {                 
-                    System.out.println(list.get(i)[0] + "=" + subrecurso[0] + "?");
-                    imprimirTablaHash();
-                    if( list.get(i)[1].equals(subrecurso[1]) )                                                
-                    {
-                        imprimirTablaHash();
-                        System.out.println(list.get(i)[1] + "=" + subrecurso[1] + "?");
-                        System.out.println("ESE RECURSO YA EXISTE, NO SE AGREGARÁ");
-                    }
-                    else{
-                        
-                    }
-                }else
-                {
-                    
-                    System.out.println("ESE RECURSO NO EXISTE, SE AGREGARÁ");
-                            flag = true;
-                            add(subrecurso);
-                }
-            }
-        }                
-        return flag;
-    }
- 
-    public synchronized int size() {
+    public int size() {
         Lock readLock = rwLock.readLock();
         readLock.lock();
  
@@ -89,41 +49,113 @@ public class TablaHash<E>
         }
     }
     
-    public synchronized void imprimirTablaHash()
-    {
+    public void imprimirTablaHash()
+    {        
+        
+        boolean flag = true;
         System.out.println("\n\n---------- RECURSOS DISPONIBLES ----------\n"); 
         for(int i = 0; i < size(); i++)
         {
-            if(i == 0)
-                System.out.println("\t----------------------");
-            for(int j = 0; j < 3; j++)
+            if( !list.get(i)[0].equals("") && !list.get(i)[1].equals("") && !list.get(i)[2].equals("") && !list.get(i)[3].equals("") )
             {
-                System.out.println( "\t" + list.get(i)[j] );    
+                if(flag)
+                {
+                    System.out.println("\t----------------------");
+                    flag = false;
+                }
+                for(int j = 0; j < 4; j++){
+                    System.out.println( "\t" + list.get(i)[j] );    
+                }
+                System.out.println("\t----------------------");
             }
-            System.out.println("\t----------------------");
         }
     }
     
-    public boolean formatearMsj(String mensaje)
-    {        
+    public boolean existeTablaHash(String[] subrecurso, int position)
+    {
+        boolean flag = true;       
+        
+        if( (list.get(position)[0]).equals(subrecurso[0]) && (list.get(position)[1]).equals(subrecurso[1]) && (list.get(position)[2]).equals(subrecurso[2]) && (list.get(position)[3]).equals(subrecurso[3]) ) 
+        {
+            System.err.println("THAT FILE ALREADY EXISTS");
+            flag = false;                    
+        }                                                                      
+        return flag;
+    }
+    
+    public int formatearMsj(String mensaje)
+    {   
+        long posLIS = 0;
+        long posFNV = 0;
+        long posMUR = 0;        
+        int server_port = 0;
         boolean flag = false;                
-        String[] subrecurso = null;
-        String[] subHash = new String[3];
+        String[] subrecurso = null;        
+        
+        FNVHash fnv = new FNVHash();
+        MurmurHash mur = new MurmurHash();                        
         String[] recurso = mensaje.split("¬");    
         
-        for ( int i = 0; i < recurso.length ;i++ ) {            
-            subrecurso = recurso[i].split("&&");    
-            for( int j = 0; j < subrecurso.length; j++ ) {           
-                subHash[j] = subrecurso[j];          
-                System.out.println("--->" +subHash[j]);
-            }
-            /*Agregamos el recurso a la tablaHASH*/
-            if( existeTablaHash(subHash) )                            
-                flag = true;            
+        for ( int i = 0; i < recurso.length ;i++ ) 
+        {                                                
+            subrecurso = recurso[i].split("&&");            
+            server_port = Integer.parseInt(subrecurso[1]);
+            
+            //HASH FUNCTIONS
+            posFNV = fnv.hash64( subrecurso[0] + "-" + subrecurso[2] ) % MAX_LENGTH_LIST;
+            posMUR = mur.hash64( subrecurso[0] + "-" + subrecurso[2] ) % MAX_LENGTH_LIST;
+            
+            //IF WE GET A NEGATIVE NUMBER POSITION FOR THE HAST TABLE
+            if( posFNV < 0 )
+                posFNV = ( posFNV * -1 );
+            if( posMUR < 0 ) 
+                posMUR = ( posMUR * -1 );
+            if( posFNV > posMUR )
+                posLIS = posMUR;
             else
-                continue;            
-        }       
-        
-        return flag;
+                posLIS = posFNV;
+                                   
+            if( existeTablaHash( subrecurso, (int)posLIS ) ){
+                add(subrecurso, (int)posLIS);                
+            }
+        }  
+        return server_port;
     }   
+    
+    public ArrayList<String[]> searchFile(String petition){
+        
+        long posLIS = 0;
+        long posFNV = 0;
+        long posMUR = 0;        
+        
+        FNVHash fnv = new FNVHash();
+        MurmurHash mur = new MurmurHash();                        
+
+        String[] aux = petition.split("&&");
+        String file = aux[3];
+        ArrayList<String[]> nodes = new ArrayList();
+        for(int i = 1; i < 11 ; i++) //Check in 10 nodes
+        {
+            //HASH FUNCTIONS
+            posFNV = fnv.hash64( i + "-" + file ) % MAX_LENGTH_LIST;
+            posMUR = mur.hash64( i + "-" + file ) % MAX_LENGTH_LIST;
+            
+            //IF WE GET A NEGATIVE NUMBER POSITION FOR THE HAST TABLE
+            if( posFNV < 0 )
+                posFNV = ( posFNV * -1 );
+            if( posMUR < 0 ) 
+                posMUR = ( posMUR * -1 );            
+            if( posFNV > posMUR )
+                posLIS = posMUR;
+            else
+                posLIS = posFNV;
+            
+            if( list.get((int)posLIS)[2].equalsIgnoreCase(file) || list.get((int)posLIS)[2].contains(file))
+            {
+                nodes.add(list.get((int)posLIS));
+            }                
+        }
+        
+        return nodes;
+    }
 }

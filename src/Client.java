@@ -192,7 +192,7 @@ public class Client extends Thread implements ActionListener{
                     SelectionKey key = (SelectionKey)iterator.next();
                     iterator.remove();
                     
-                    if(key.isWritable() && (flagg == 1 ||  flagg==5))
+                    if(key.isWritable() && (flagg == 1 ||  flagg == 5))
                     {                     
                         /*Building the message*/
                         if(flagg == 1)
@@ -200,7 +200,6 @@ public class Client extends Thread implements ActionListener{
                             String message = "1" + "&&" + client_indx + "&&" + client_port + "&&" + fileJtxt;  /* 1 for search */                        
                             ByteBuffer buffer = ByteBuffer.wrap(message.getBytes());                     
                             int nB = channel.send(buffer,new InetSocketAddress(CENTRAL_HOST, CENTRAL_PORT));
-
                             System.out.println("\n---------- LOOKING FOR THE FILE IN CENTRAL ----------\n"); 
                             System.out.println("Byte enviados: " + nB);                        
                             channel.register(selector, SelectionKey.OP_READ);     
@@ -208,8 +207,7 @@ public class Client extends Thread implements ActionListener{
                             
                         }else if(flagg == 5){
                             
-                            String message = "";
-                            
+                            String message = "";                            
                             for(int j = 0; j < serversF.size(); j++){
                                 
                                 message = "7" + "&&" + client_port + "&&" + serversF.size() + "&&" + j + "&&" + serversF.get(j)[2];
@@ -223,6 +221,9 @@ public class Client extends Thread implements ActionListener{
                    }
                    else if(key.isReadable())
                    {       
+                       //Recibir archivo de otros nodos
+                       
+                       //Recibir codigo servidor --> preparase para recibir arraylist
                        ArrayList<String[]> nodes = null;
                        /* Every peer who has the file we are looking for */
                        ByteBuffer buffer = ByteBuffer.allocate(MAX_PACKET_SIZE);

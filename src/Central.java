@@ -80,6 +80,7 @@ public class Central extends Thread
                                channel.send(bufferT, new InetSocketAddress(CENTRAL_HOST, client_port));
                            }else
                            {
+                               //Enviar codigo a cliente --> Write para escribir  
                                ByteArrayOutputStream bos = new ByteArrayOutputStream();
                                ObjectOutputStream oos = new ObjectOutputStream(bos);
                                ArrayList<String[]> nodes = hash.searchFile(recursos);

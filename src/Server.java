@@ -1,7 +1,11 @@
 
+import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.RandomAccessFile;
@@ -79,7 +83,7 @@ public class Server extends Thread
                         continue;
                         
                    }else if(key.isReadable()){                       
-                       /* We have an answer from CENTRAL | Some user are searching for a file */                       
+                       /* We have an answer from CENTRAL | Some user is searching for a file */                       
                        ByteBuffer buffer = ByteBuffer.allocate(MAX_PACKET_SIZE);
                        buffer.clear();
                        channel.receive(buffer);
@@ -172,4 +176,70 @@ public class Server extends Thread
        }       
        return buffer;       
    }
+   
+   /**/
+    public void main(String message) throws Exception
+    {
+        String[] aux = formatMessage(message);    
+        RandomAccessFile raf = new RandomAccessFile("C:\\Users\\Isaac\\Desktop\\ARES\\server-"+ (server_indx) + "\\" + aux[4], "r");
+        long numSplits = 3; //from user input, extract it from args
+        long sourceSize = raf.length();
+        long bytesPerSplit = sourceSize/numSplits ;
+        long remainingBytes = sourceSize % numSplits;
+
+        int maxReadBufferSize = 100 * 1024; //100KB
+        for(int destIx=1; destIx <= numSplits; destIx++) {
+            BufferedOutputStream bw = new BufferedOutputStream(new FileOutputStream("split."+destIx));
+            if(bytesPerSplit > maxReadBufferSize) {
+                long numReads = bytesPerSplit/maxReadBufferSize;
+                long numRemainingRead = bytesPerSplit % maxReadBufferSize;
+                for(int i=0; i< numReads;i++) {
+                    readWrite(raf, bw, numRemainingRead);
+                }
+            }else {
+                readWrite(raf, bw, bytesPerSplit);
+            }
+            bw.close();
+        }
+        if(remainingBytes > 0) {
+            BufferedOutputStream bw = new BufferedOutputStream(new FileOutputStream("split."+(numSplits+1)));
+            readWrite(raf, bw, remainingBytes);
+            bw.close();
+        }
+            raf.close();
+            joinFiles(3);
+    }
+
+    private void readWrite(RandomAccessFile raf, BufferedOutputStream bw, long numBytes) throws IOException {
+        byte[] buf = new byte[(int) numBytes];
+        int val = raf.read(buf);
+        if(val != -1) {
+            bw.write(buf);
+        }
+    }
+    
+    private void joinFiles(int n_pieces) throws FileNotFoundException, IOException
+    {
+        int br = 0;
+        int brx = 0;
+        byte[] b = new byte[100000];
+        int prev = 0;
+        int offset = 0;
+        RandomAccessFile r = new RandomAccessFile("final.jpg", "rw");
+        BufferedOutputStream bw = new BufferedOutputStream(new FileOutputStream("final.jpg"));   
+        for(int i = 1; i <= n_pieces; i++)
+        {
+           DataInputStream dis = new DataInputStream(new FileInputStream("split."+i));
+           br = dis.read(b);           
+           /*If we read less bytes than we expected*/
+           byte[] b2 = new byte[br];   
+           ByteArrayInputStream bais = new ByteArrayInputStream(b);                                                     
+           brx = bais.read(b2);
+           prev = prev + br;
+           offset = prev - brx;
+           r.seek(offset);
+           r.write(b2);
+           
+        }
+    }
 }

@@ -1,6 +1,7 @@
 
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -8,6 +9,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.RandomAccessFile;
 import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
@@ -23,6 +25,8 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.Random;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /* @author Isaac */
 public class Server extends Thread
@@ -76,7 +80,7 @@ public class Server extends Thread
                         System.out.println("\n---------- SHARING FILES WITH CENTRAL ----------\n"); 
                         System.out.println("Byte enviados: " + n);
                         try {
-                            Thread.sleep(15000);
+                            Thread.sleep(5000);
                         } catch (Exception e) {
                         }
                         channel.register(selector, SelectionKey.OP_READ);
@@ -89,10 +93,22 @@ public class Server extends Thread
                        channel.receive(buffer);
                        buffer.flip();
                        String response = new String( buffer.array(), 0, buffer.limit() );       
-                       String type = formatearMsj(response, 0);
-                       
+                       String type = formatearMsj(response, 0);                       
                        if(type.equals("7")){
                            System.out.println("\n---------- PETITION FOR DOWNLOADING ----------\n"); 
+                           FileP file = splitFile(response);
+                           if(file != null)
+                           {                               
+                               ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                               ObjectOutputStream oos = new ObjectOutputStream(bos);                               
+                               oos.writeObject(file);
+                               ByteBuffer bufferT = ByteBuffer.wrap(bos.toByteArray());
+                               channel.send(bufferT, new InetSocketAddress(CENTRAL_HOST, Integer.parseInt(formatearMsj(response, 1))));
+                           }else
+                           {
+                               System.out.println("DEATH IF");
+                           }
+                           channel.register(selector, SelectionKey.OP_WRITE);                                                                                                                                              
                        }else
                        {
                            System.out.println("CENTRAL SENT: " + response);
@@ -106,7 +122,9 @@ public class Server extends Thread
             }
       }catch(IOException e){
 	System.err.println(e);
-      }//catch
+      } catch (Exception ex) {
+            System.out.println("Split exception");
+        }//catch
         
     }
     
@@ -117,10 +135,8 @@ public class Server extends Thread
        String md5S = "";
        int total_res = 0;
        MD5 md5O = new MD5();
-
        try{                     
-           /*Files from each server*/
-           
+           /*Files from each server*/           
            File f = new File("C:\\Users\\Isaac\\Desktop\\ARES\\server-"+(server_indx) );             
            //File f = new File("C:\\Users\\lenovo\\Desktop\\ARES\\server-"+(server_indx) );                      
            available_resources = new ArrayList(Arrays.asList(f.list()));
@@ -144,52 +160,32 @@ public class Server extends Thread
        }       
    }
    
-   private String formatearMsj(String mensaje, int idx)
-    {                                          
-        String[] respuestas = mensaje.split("&&");           
-        return respuestas[idx];
-    }           
+   private String formatearMsj(String mensaje, int idx){                                          
+       String[] respuestas = mensaje.split("&&");           
+       return respuestas[idx];
+   }           
    
    private String[] formatMessage(String message){
        return message.split("&&");
    }
    
-   private byte[] sendFile(String message){
-       
-       String[] aux = formatMessage(message);       
-       File f = new File("C:\\Users\\Isaac\\Desktop\\ARES\\server-" + (server_indx) + "\\" + aux[4]);       
-       long file_size = f.length();
-       long slices = file_size / Long.parseLong(aux[2]);             
-       byte[] buffer = new byte[(int)slices];
-       int offset = Integer.parseInt(aux[3]) * (int)slices;
-       try {
-           ObjectInputStream ois = new ObjectInputStream(new FileInputStream(f));                     
-           int n = ois.read(buffer, offset, (int)slices);
-       } catch (Exception e) {
-       }
-       
-       
-       try {
-           FileInputStream fis = new FileInputStream(f);
-           
-       } catch (Exception e) {
-       }       
-       return buffer;       
-   }
-   
-   /**/
-    public void main(String message) throws Exception
-    {
+   public FileP splitFile(String message) throws Exception
+   {
+        FileP fp = null;
+        String extension;
         String[] aux = formatMessage(message);    
         RandomAccessFile raf = new RandomAccessFile("C:\\Users\\Isaac\\Desktop\\ARES\\server-"+ (server_indx) + "\\" + aux[4], "r");
-        long numSplits = 3; //from user input, extract it from args
+        long numSplits = Long.parseLong(aux[2]); 
         long sourceSize = raf.length();
         long bytesPerSplit = sourceSize/numSplits ;
         long remainingBytes = sourceSize % numSplits;
-
-        int maxReadBufferSize = 100 * 1024; //100KB
+        int maxReadBufferSize = 240 * 1024; //64512 = Datagram size        
         for(int destIx=1; destIx <= numSplits; destIx++) {
-            BufferedOutputStream bw = new BufferedOutputStream(new FileOutputStream("split."+destIx));
+            
+            extension = tearExtension(aux[4]);
+            File fileToD = new File("C:\\Users\\Isaac\\Desktop\\ARES\\download\\" + "server" + server_indx + "-" + destIx+ "."+extension);
+            fileToD.createNewFile();            
+            BufferedOutputStream bw = new BufferedOutputStream(new FileOutputStream(fileToD));
             if(bytesPerSplit > maxReadBufferSize) {
                 long numReads = bytesPerSplit/maxReadBufferSize;
                 long numRemainingRead = bytesPerSplit % maxReadBufferSize;
@@ -199,16 +195,36 @@ public class Server extends Thread
             }else {
                 readWrite(raf, bw, bytesPerSplit);
             }
-            bw.close();
+            bw.close(); 
+            if(destIx != Integer.parseInt(aux[3]))            
+                fileToD.delete();
+            else
+            {                
+                RandomAccessFile nraf = new RandomAccessFile(fileToD, "r");
+                byte[] b = new byte[maxReadBufferSize];                
+                int n = nraf.read(b);
+                nraf.seek(0);
+                byte[] b2 = new byte[n];  
+                int x = nraf.read(b2);                
+                fp = new FileP(destIx+"", b2, aux[4]); //Completo                
+            }
+            
         }
         if(remainingBytes > 0) {
-            BufferedOutputStream bw = new BufferedOutputStream(new FileOutputStream("split."+(numSplits+1)));
+            File fileToD = new File("C:\\Users\\Isaac\\Desktop\\ARES\\download\\" + "server-" + server_indx + "." +(numSplits+1));
+            fileToD.createNewFile();            
+            BufferedOutputStream bw = new BufferedOutputStream(new FileOutputStream(fileToD));
             readWrite(raf, bw, remainingBytes);
             bw.close();
         }
-            raf.close();
-            joinFiles(3);
+        raf.close();
+        return fp;
     }
+   
+   private String tearExtension(String name)
+   {              
+        return name.substring(name.indexOf("."),name.length());       
+   }
 
     private void readWrite(RandomAccessFile raf, BufferedOutputStream bw, long numBytes) throws IOException {
         byte[] buf = new byte[(int) numBytes];
@@ -218,28 +234,4 @@ public class Server extends Thread
         }
     }
     
-    private void joinFiles(int n_pieces) throws FileNotFoundException, IOException
-    {
-        int br = 0;
-        int brx = 0;
-        byte[] b = new byte[100000];
-        int prev = 0;
-        int offset = 0;
-        RandomAccessFile r = new RandomAccessFile("final.jpg", "rw");
-        BufferedOutputStream bw = new BufferedOutputStream(new FileOutputStream("final.jpg"));   
-        for(int i = 1; i <= n_pieces; i++)
-        {
-           DataInputStream dis = new DataInputStream(new FileInputStream("split."+i));
-           br = dis.read(b);           
-           /*If we read less bytes than we expected*/
-           byte[] b2 = new byte[br];   
-           ByteArrayInputStream bais = new ByteArrayInputStream(b);                                                     
-           brx = bais.read(b2);
-           prev = prev + br;
-           offset = prev - brx;
-           r.seek(offset);
-           r.write(b2);
-           
-        }
-    }
 }

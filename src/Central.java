@@ -68,14 +68,13 @@ public class Central extends Thread
                            
                            buffer.flip();
                            String recursos = new String( buffer.array(), 0, buffer.limit());                                
-                           String petition = formatearMsj(recursos,0);
-                           
+                           String petition = formatearMsj(recursos,0);                           
                            if(petition.equals("2"))
                            {                               
                                String nR = newResource(recursos);
                                client_port = hash.formatearMsj(nR);                               
                                hash.imprimirTablaHash();
-                               String mesage = "RESOURCES RECIEVED FROM: " + client_port; //2 for server response
+                               String mesage = "6&&RESOURCES RECIEVED FROM: " + client_port; //2 for server response
                                ByteBuffer bufferT = ByteBuffer.wrap(mesage.getBytes());
                                channel.send(bufferT, new InetSocketAddress(CENTRAL_HOST, client_port));
                            }else

@@ -4,9 +4,16 @@ import java.awt.Dimension;
 import java.awt.Image;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.io.RandomAccessFile;
 import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -28,6 +35,7 @@ import static javax.swing.JFrame.EXIT_ON_CLOSE;
 public class Client extends Thread implements ActionListener{
     
     int flagg = 0;
+    int read_flag = 0;
     
     /*Client attributes*/
     private int client_indx;
@@ -45,23 +53,27 @@ public class Client extends Thread implements ActionListener{
     private JLabel NoFile = new JLabel();
     private JButton search = new JButton();
     private JButton download = new JButton();
-    private JFrame window = new JFrame("ARES");
+    private JFrame window = new JFrame();
     private JTextArea txtArea = new JTextArea();
     private JTextField fileTS = new JTextField();    
     private JTextField resourceN = new JTextField();    
     private JScrollPane listScrollPane = new JScrollPane(txtArea);
         
-    private ArrayList<String[]> serversF = new ArrayList<>();
+    private ArrayList<String[]> serversF = new ArrayList();
+    private ArrayList<FileP> dataPieces = new ArrayList();
     
     public Client(int client_indx, int client_port)            
     {       
         this.client_indx = client_indx;
-        this.client_port = client_port;        
+        this.client_port = client_port;    
+        for(int i = 0; i < 10; i++)
+            dataPieces.add(null);
+        
         run();
     }
     
     public void initWindow(){
-
+        window.setTitle("ARES #"+client_indx);
         //Propiedades de la ventana
         window.setLayout(null);
         window.setBounds(0, 0, 650, 800);
@@ -192,7 +204,7 @@ public class Client extends Thread implements ActionListener{
                     SelectionKey key = (SelectionKey)iterator.next();
                     iterator.remove();
                     
-                    if(key.isWritable() && (flagg == 1 ||  flagg == 5))
+                    if(key.isWritable() && (flagg == 1 || flagg == 5))
                     {                     
                         /*Building the message*/
                         if(flagg == 1)
@@ -204,50 +216,89 @@ public class Client extends Thread implements ActionListener{
                             System.out.println("Byte enviados: " + nB);                        
                             channel.register(selector, SelectionKey.OP_READ);     
                             fileJtxt = "";
+                            read_flag = 1;
                             
                         }else if(flagg == 5){
                             
                             String message = "";                            
                             for(int j = 0; j < serversF.size(); j++){
                                 
-                                message = "7" + "&&" + client_port + "&&" + serversF.size() + "&&" + j + "&&" + serversF.get(j)[2];
+                                message = "7" + "&&" + client_port + "&&" + serversF.size() + "&&" + (j+1) + "&&" + serversF.get(j)[2];
                                 ByteBuffer buffer = ByteBuffer.wrap(message.getBytes());                                   
                                 int nB = channel.send(buffer,new InetSocketAddress(CENTRAL_HOST, Integer.parseInt(serversF.get(j)[1])));
                                 System.out.println("\n---------- PETITIONS HAVE BEEN SENT ----------\n"); 
                                 System.out.println("Byte enviados: " + nB);                        
-                                channel.register(selector, SelectionKey.OP_READ);     
+                                channel.register(selector, SelectionKey.OP_READ);   
+                                read_flag = 2;
                             }
+                            
                         }
                    }
                    else if(key.isReadable())
-                   {       
-                       //Recibir archivo de otros nodos
-                       
-                       //Recibir codigo servidor --> preparase para recibir arraylist
-                       ArrayList<String[]> nodes = null;
-                       /* Every peer who has the file we are looking for */
-                       ByteBuffer buffer = ByteBuffer.allocate(MAX_PACKET_SIZE);
-                       buffer.clear();
-                       SocketAddress client = channel.receive(buffer);
-                       buffer.flip();
-                       ByteArrayInputStream in = new ByteArrayInputStream(buffer.array());
-                       ObjectInputStream is = new ObjectInputStream(in);
-                       try {
-                            nodes = (ArrayList<String[]>)is.readObject();
-                       } catch (Exception e) {
-                       }
-                       
-                       for(int i = 0; i < nodes.size(); i++)
+                   {                              
+                       if(read_flag == 1)
                        {
-                           String[] ax = {nodes.get(i)[0], nodes.get(i)[1], nodes.get(i)[2] , nodes.get(i)[3]};                           
-                           serversF.add(ax);                                                      
-                           flagg = 2;  
+                           ArrayList<String[]> nodes = null;
+                           /* Every peer who has the file we are looking for */
+                           ByteBuffer buffer = ByteBuffer.allocate(MAX_PACKET_SIZE);
+                           buffer.clear();
+                           channel.receive(buffer);
+                           buffer.flip();
+                           ByteArrayInputStream in = new ByteArrayInputStream(buffer.array());
+                           ObjectInputStream is = new ObjectInputStream(in);
+                           try {
+                                nodes = (ArrayList<String[]>)is.readObject();
+                           } catch (Exception e) {
+                           }
+                           for(int i = 0; i < nodes.size(); i++)
+                           {
+                               String[] ax = {nodes.get(i)[0], nodes.get(i)[1], nodes.get(i)[2] , nodes.get(i)[3]};                           
+                               serversF.add(ax);                                                      
+                               flagg = 2;  
+                           }                                              
+                           if(flagg==2)  
+                           {
+                               key.interestOps(SelectionKey.OP_WRITE);
+                               break;
+                           }
+                       }
+                       else if(read_flag == 2)
+                       {
+                           //We are receiving a file
+                           System.out.println("\n---------- DOWNLOADING FILE ----------\n"); 
+                           FileP receive = null;
+                           ByteBuffer buffer = ByteBuffer.allocate(MAX_PACKET_SIZE);
+                           buffer.clear();
+                           channel.receive(buffer);
+                           buffer.flip();
+                           ByteArrayInputStream in = new ByteArrayInputStream(buffer.array());
+                           ObjectInputStream is = new ObjectInputStream(in);
+                           try {
+                               receive = (FileP) is.readObject();
+                               dataPieces.add(Integer.parseInt(receive.getPiece()),receive);
+                               int notN =getNoNull();
+                               if(notN != serversF.size()){
+                                   //There are more pieces coming
+                                   read_flag = 2;
+                                   key.interestOps(SelectionKey.OP_READ);
+                                   System.out.println("--------------------------------------------->ANOTHER PIECE COMIN'");                                   
+                               }else
+                               {
+                                   //That's it, we're done
+                                   //dataPieces.add(Integer.parseInt(receive.getPiece()),receive);
+                                   joinFiles(dataPieces.size(), receive.getFileName());
+                                   key.interestOps(SelectionKey.OP_WRITE);
+                                   read_flag = 0;
+                                   flagg=0;
+                                   
+                               }
+                           } catch (Exception e) {
+                               e.printStackTrace();
+                               System.out.println("FAIL READING FILEP OBJECT");
+                           }
+                           
+                           
                        }                                              
-                       if(flagg==2)  
-                       {
-                           key.interestOps(SelectionKey.OP_WRITE);
-                           break;
-                       }
                    }
 
                }
@@ -255,7 +306,7 @@ public class Client extends Thread implements ActionListener{
                 {
                     window.dispose();    
                     initWindow();
-                    serversF.clear();
+                    //serversF.clear();
                     flagg=0;
                 }
             }
@@ -266,6 +317,17 @@ public class Client extends Thread implements ActionListener{
         
             
             
+    }
+    
+    private int getNoNull()
+    {
+        int not_null = 0;
+        for(int i = 0; i < dataPieces.size(); i++)
+        {
+            if(dataPieces.get(i) != null)
+                not_null++;
+        }
+        return not_null;
     }
 
     @Override
@@ -279,27 +341,45 @@ public class Client extends Thread implements ActionListener{
                 fileJtxt = fileTS.getText();   
                 flagg = 1;   
             }                
-        }  
-        if(e.getSource()== download){
-            
-            if(resourceN.getText().equalsIgnoreCase("")){
-                JOptionPane.showMessageDialog(null, "Error, type a numer file");
-                
-            }else{
-                JOptionPane.showMessageDialog(null, "Downloading", "Ok", JOptionPane.INFORMATION_MESSAGE);
-                try {
-                    int x = Integer.parseInt(resourceN.getText());
-                    flagg=5;
-                } catch (Exception ex) {
-                    JOptionPane.showMessageDialog(null, "ONLY NUMBERS", "ERROR", JOptionPane.ERROR_MESSAGE);
-                }                
+        }
+        else  
+        {
+            if(e.getSource()== download)
+            {            
+                if(resourceN.getText().equalsIgnoreCase("")){
+                    JOptionPane.showMessageDialog(null, "Error, type a numer file");
+
+                }else{
+                    //JOptionPane.showMessageDialog(null, "Downloading", "Ok", JOptionPane.INFORMATION_MESSAGE);
+                    try {
+                        int x = Integer.parseInt(resourceN.getText());
+                        flagg=5;
+                        JOptionPane.showMessageDialog(null, "Obteniendo recursos...", "ARES", JOptionPane.INFORMATION_MESSAGE);
+                    } catch (Exception ex) {
+                        JOptionPane.showMessageDialog(null, "ONLY NUMBERS", "ERROR", JOptionPane.ERROR_MESSAGE);
+                    }                
+                }
             }
         }
     }
     
-    private void download(String name){        
-        int threads = 0;
-        String[] ports = new String[threads];
-        
+    private void joinFiles(int n_pieces, String name) throws FileNotFoundException, IOException
+    {
+        File dw = new File("C:\\Users\\Isaac\\Desktop\\ARES\\download\\"+"cliente" + client_indx + "-"+name);        
+        //BufferedOutputStream bw1 = new BufferedOutputStream(new FileOutputStream(dw));        
+        int prev = 0;
+        int offset = 0;
+        RandomAccessFile r = new RandomAccessFile(dw, "rw");        
+        for(int i = 0; i < n_pieces; i++)
+        {                      
+            if(dataPieces.get(i) == null)
+                continue;
+           prev = prev + dataPieces.get(i).getData().length;
+           offset = prev - dataPieces.get(i).getData().length;
+           r.seek(offset);
+           r.write(dataPieces.get(i).getData());
+           
+        }
+        r.close();
     }
 }
